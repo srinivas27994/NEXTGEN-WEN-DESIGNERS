@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 // ── Middleware ────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // serves index.html
+app.use(express.static(path.join(__dirname, '.'))); // serves index.html
 
 // ── Config — fill these in .env or directly here ─────────
 const GMAIL_USER = process.env.GMAIL_USER || 'nextgenwebdesigners279@gmail.com';
@@ -178,7 +178,7 @@ app.get('/api/reviews/stats', (req, res) => {
 
 // ── Fallback: serve index.html for any unknown route ─────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ── Start server ──────────────────────────────────────────
