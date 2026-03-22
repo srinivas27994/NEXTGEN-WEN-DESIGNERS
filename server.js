@@ -1,4 +1,5 @@
 const express = require('express');
+const fetch   = require('node-fetch');
 const fs      = require('fs');
 const path    = require('path');
 const cors    = require('cors');
@@ -126,3 +127,13 @@ app.listen(PORT, () => {
   console.log('🚀 Server running on port ' + PORT);
   console.log('📧 Email via Resend API');
 });
+```
+
+Commit ✅
+
+---
+
+Railway auto deploys → test review again → logs should show:
+```
+✅ Review saved: test 5★
+📧 Email sent successfully!
