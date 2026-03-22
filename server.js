@@ -9,56 +9,41 @@ const cors       = require('cors');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-const GMAIL_USER   = process.env.GMAIL_USER;
-const GMAIL_PASS   = process.env.GMAIL_PASS;
-const REVIEWS_FILE = path.join(__dirname, 'reviews.json');
-
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '.')));
 
-// Create reviews.json if not exists
+const REVIEWS_FILE = path.join(__dirname, 'reviews.json');
 if (!fs.existsSync(REVIEWS_FILE)) {
   fs.writeFileSync(REVIEWS_FILE, JSON.stringify({ reviews: [] }, null, 2));
 }
 
-// Read reviews
 function readReviews() {
-  try {
-    return JSON.parse(fs.readFileSync(REVIEWS_FILE, 'utf8'));
-  } catch {
-    return { reviews: [] };
-  }
+  try { return JSON.parse(fs.readFileSync(REVIEWS_FILE, 'utf8')); }
+  catch { return { reviews: [] }; }
 }
 
-// Save reviews
 function saveReviews(data) {
   fs.writeFileSync(REVIEWS_FILE, JSON.stringify(data, null, 2));
 }
 
-// Nodemailer transporter
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
   auth: {
-    user: GMAIL_USER,
-    pass: GMAIL_PASS,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
-// POST - Submit review
 app.post('/api/review', async (req, res) => {
   const { name, business, email, service, rating, message } = req.body;
 
   if (!name || !message || !rating) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'Name, rating and message are required.' 
-    });
+    return res.status(400).json({ success: false, error: 'Name, rating and message are required.' });
   }
 
-  // Save to reviews.json
   const db = readReviews();
   const newReview = {
     id:       Date.now(),
@@ -69,27 +54,24 @@ app.post('/api/review', async (req, res) => {
     rating:   Number(rating),
     message:  message.trim(),
     date:     new Date().toISOString(),
-    dateIST:  new Date().toLocaleString('en-IN', { 
-      timeZone: 'Asia/Kolkata' 
-    }) + ' IST',
+    dateIST:  new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
   };
   db.reviews.unshift(newReview);
   saveReviews(db);
   console.log('✅ Review saved:', name, rating + '★');
 
-  // Send email
   const starStr = '★'.repeat(Number(rating)) + '☆'.repeat(5 - Number(rating));
 
   try {
     await transporter.sendMail({
-      from:    `"NextGen Website" <${GMAIL_USER}>`,
-      to:      GMAIL_USER,
-      subject: `⭐ ${rating}-Star Review from ${name} | NextGen Web Designers`,
+      from:    '"NextGen Website" <' + process.env.SMTP_USER + '>',
+      to:      'nextgenwebdesigners279@gmail.com',
+      subject: '⭐ ' + rating + '-Star Review from ' + name + ' | NextGen Web Designers',
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
           <div style="background:linear-gradient(135deg,#7c3aed,#ec4899);padding:24px;border-radius:12px 12px 0 0;">
             <h2 style="color:white;margin:0;">⭐ New Review Received!</h2>
-            <p style="color:rgba(255,255,255,.85);margin:.3rem 0 0;font-size:.9rem;">NextGen Web Designers</p>
+            <p style="color:rgba(255,255,255,.85);margin:.3rem 0 0;">NextGen Web Designers</p>
           </div>
           <div style="background:#f8f9fa;padding:24px;border-radius:0 0 12px 12px;border:1px solid #e9ecef;">
             <p><strong>Rating:</strong> ${starStr} (${rating}/5)</p>
@@ -101,9 +83,7 @@ app.post('/api/review', async (req, res) => {
             <hr style="border:none;border-top:1px solid #dee2e6;margin:16px 0;">
             <p><strong>Review:</strong></p>
             <p style="background:white;padding:16px;border-radius:8px;border-left:4px solid #7c3aed;font-style:italic;">"${message}"</p>
-            <p style="font-size:.75rem;color:#6c757d;margin-top:16px;">
-              Total reviews: ${db.reviews.length}
-            </p>
+            <p style="font-size:.75rem;color:#6c757d;margin-top:16px;">Total reviews: ${db.reviews.length}</p>
           </div>
         </div>
       `,
@@ -113,26 +93,31 @@ app.post('/api/review', async (req, res) => {
 
   } catch (emailErr) {
     console.error('❌ Email error:', emailErr.message);
-    return res.status(200).json({ 
-      success: true, 
-      warning: 'Review saved but email failed.',
-      review: newReview 
-    });
+    return res.status(200).json({ success: true, warning: 'Review saved but email failed.', review: newReview });
   }
 });
 
-// GET - All reviews
 app.get('/api/reviews', (req, res) => {
   const db = readReviews();
   res.json({ success: true, total: db.reviews.length, reviews: db.reviews });
 });
 
-// Serve website
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📧 Gmail: ${GMAIL_USER}`);
+  console.log('🚀 Server running on port ' + PORT);
+  console.log('📧 Sending emails via Brevo SMTP');
 });
+```
+
+**6.** Scroll down → type `Fix email with Brevo SMTP` in commit box
+
+**7.** Click **"Commit changes"** ✅
+
+---
+
+Railway will auto redeploy! Watch for:
+```
+✅ Deployment successful
