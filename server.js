@@ -1,5 +1,5 @@
 const express = require('express');
-const fetch   = require('node-fetch');
+const axios   = require('axios');
 const fs      = require('fs');
 const path    = require('path');
 const cors    = require('cors');
@@ -56,13 +56,9 @@ app.post('/api/review', async (req, res) => {
   const starStr = '★'.repeat(Number(rating)) + '☆'.repeat(5 - Number(rating));
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await axios.post(
+      'https://api.resend.com/emails',
+      {
         from:    'NextGen Website <onboarding@resend.dev>',
         to:      'nextgenwebdesigners279@gmail.com',
         subject: '⭐ ' + rating + '-Star Review from ' + name + ' | NextGen Web Designers',
@@ -88,21 +84,17 @@ app.post('/api/review', async (req, res) => {
             </div>
           </div>
         `,
-      }),
-    });
+      },
+      {
+        headers: {
+          'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
 
-    if (response.ok) {
-      console.log('📧 Email sent successfully!');
-      return res.status(200).json({ success: true, review: newReview });
-    } else {
-      const err = await response.json();
-      console.error('❌ Resend error:', JSON.stringify(err));
-      return res.status(200).json({
-        success: true,
-        warning: 'Review saved but email failed.',
-        review: newReview
-      });
-    }
+    console.log('📧 Email sent successfully!');
+    return res.status(200).json({ success: true, review: newReview });
 
   } catch (emailErr) {
     console.error('❌ Email error:', emailErr.message);
@@ -125,15 +117,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('🚀 Server running on port ' + PORT);
-  console.log('📧 Email via Resend API');
+  console.log('📧 Email via Resend + Axios');
 });
-```
-
-Commit ✅
-
----
-
-Railway auto deploys → test review again → logs should show:
-```
-✅ Review saved: test 5★
-📧 Email sent successfully!
