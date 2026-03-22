@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 const express    = require('express');
 const nodemailer = require('nodemailer');
 const fs         = require('fs');
@@ -41,7 +39,10 @@ app.post('/api/review', async (req, res) => {
   const { name, business, email, service, rating, message } = req.body;
 
   if (!name || !message || !rating) {
-    return res.status(400).json({ success: false, error: 'Name, rating and message are required.' });
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Name, rating and message are required.' 
+    });
   }
 
   const db = readReviews();
@@ -54,7 +55,9 @@ app.post('/api/review', async (req, res) => {
     rating:   Number(rating),
     message:  message.trim(),
     date:     new Date().toISOString(),
-    dateIST:  new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST',
+    dateIST:  new Date().toLocaleString('en-IN', { 
+      timeZone: 'Asia/Kolkata' 
+    }) + ' IST',
   };
   db.reviews.unshift(newReview);
   saveReviews(db);
@@ -83,7 +86,9 @@ app.post('/api/review', async (req, res) => {
             <hr style="border:none;border-top:1px solid #dee2e6;margin:16px 0;">
             <p><strong>Review:</strong></p>
             <p style="background:white;padding:16px;border-radius:8px;border-left:4px solid #7c3aed;font-style:italic;">"${message}"</p>
-            <p style="font-size:.75rem;color:#6c757d;margin-top:16px;">Total reviews: ${db.reviews.length}</p>
+            <p style="font-size:.75rem;color:#6c757d;margin-top:16px;">
+              Total reviews: ${db.reviews.length}
+            </p>
           </div>
         </div>
       `,
@@ -93,7 +98,11 @@ app.post('/api/review', async (req, res) => {
 
   } catch (emailErr) {
     console.error('❌ Email error:', emailErr.message);
-    return res.status(200).json({ success: true, warning: 'Review saved but email failed.', review: newReview });
+    return res.status(200).json({ 
+      success: true, 
+      warning: 'Review saved but email failed.',
+      review: newReview 
+    });
   }
 });
 
@@ -108,16 +117,30 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('🚀 Server running on port ' + PORT);
-  console.log('📧 Sending emails via Brevo SMTP');
+  console.log('📧 Brevo SMTP ready');
 });
 ```
 
-**6.** Scroll down → type `Fix email with Brevo SMTP` in commit box
-
+**6.** Scroll down → type in commit box:
+```
+Fix Brevo SMTP no secrets
+```
 **7.** Click **"Commit changes"** ✅
 
 ---
 
-Railway will auto redeploy! Watch for:
+## Also — Delete SMTP_HOST and SMTP_PORT from Railway Variables
+
+Go to Railway → **Variables** tab → find `SMTP_HOST` → click **⋮** → **Delete**
+
+Do same for `SMTP_PORT` → **Delete**
+
+These two are not needed anymore since we hardcoded `smtp-relay.brevo.com` directly in the code!
+
+Keep only:
 ```
-✅ Deployment successful
+✅ GMAIL_USER
+✅ GMAIL_PASS
+✅ PORT
+✅ SMTP_USER
+✅ SMTP_PASS
