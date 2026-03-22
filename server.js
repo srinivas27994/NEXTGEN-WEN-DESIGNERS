@@ -1,8 +1,7 @@
-const express    = require('express');
-const nodemailer = require('nodemailer');
-const fs         = require('fs');
-const path       = require('path');
-const cors       = require('cors');
+const express = require('express');
+const fs      = require('fs');
+const path    = require('path');
+const cors    = require('cors');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -25,23 +24,13 @@ function saveReviews(data) {
   fs.writeFileSync(REVIEWS_FILE, JSON.stringify(data, null, 2));
 }
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
 app.post('/api/review', async (req, res) => {
   const { name, business, email, service, rating, message } = req.body;
 
   if (!name || !message || !rating) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'Name, rating and message are required.' 
+    return res.status(400).json({
+      success: false,
+      error: 'Name, rating and message are required.'
     });
   }
 
@@ -55,8 +44,8 @@ app.post('/api/review', async (req, res) => {
     rating:   Number(rating),
     message:  message.trim(),
     date:     new Date().toISOString(),
-    dateIST:  new Date().toLocaleString('en-IN', { 
-      timeZone: 'Asia/Kolkata' 
+    dateIST:  new Date().toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata'
     }) + ' IST',
   };
   db.reviews.unshift(newReview);
@@ -66,42 +55,60 @@ app.post('/api/review', async (req, res) => {
   const starStr = '★'.repeat(Number(rating)) + '☆'.repeat(5 - Number(rating));
 
   try {
-    await transporter.sendMail({
-      from:    '"NextGen Website" <' + process.env.SMTP_USER + '>',
-      to:      'nextgenwebdesigners279@gmail.com',
-      subject: '⭐ ' + rating + '-Star Review from ' + name + ' | NextGen Web Designers',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-          <div style="background:linear-gradient(135deg,#7c3aed,#ec4899);padding:24px;border-radius:12px 12px 0 0;">
-            <h2 style="color:white;margin:0;">⭐ New Review Received!</h2>
-            <p style="color:rgba(255,255,255,.85);margin:.3rem 0 0;">NextGen Web Designers</p>
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + process.env.RESEND_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from:    'NextGen Website <onboarding@resend.dev>',
+        to:      'nextgenwebdesigners279@gmail.com',
+        subject: '⭐ ' + rating + '-Star Review from ' + name + ' | NextGen Web Designers',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <div style="background:linear-gradient(135deg,#7c3aed,#ec4899);padding:24px;border-radius:12px 12px 0 0;">
+              <h2 style="color:white;margin:0;">⭐ New Review Received!</h2>
+              <p style="color:rgba(255,255,255,.85);margin:.3rem 0 0;">NextGen Web Designers</p>
+            </div>
+            <div style="background:#f8f9fa;padding:24px;border-radius:0 0 12px 12px;border:1px solid #e9ecef;">
+              <p><strong>Rating:</strong> ${starStr} (${rating}/5)</p>
+              <p><strong>Name:</strong> ${name}</p>
+              ${business ? `<p><strong>Business:</strong> ${business}</p>` : ''}
+              ${email    ? `<p><strong>Email:</strong> ${email}</p>`       : ''}
+              ${service  ? `<p><strong>Service:</strong> ${service}</p>`   : ''}
+              <p><strong>Date:</strong> ${newReview.dateIST}</p>
+              <hr style="border:none;border-top:1px solid #dee2e6;margin:16px 0;">
+              <p><strong>Review:</strong></p>
+              <p style="background:white;padding:16px;border-radius:8px;border-left:4px solid #7c3aed;font-style:italic;">"${message}"</p>
+              <p style="font-size:.75rem;color:#6c757d;margin-top:16px;">
+                Total reviews: ${db.reviews.length}
+              </p>
+            </div>
           </div>
-          <div style="background:#f8f9fa;padding:24px;border-radius:0 0 12px 12px;border:1px solid #e9ecef;">
-            <p><strong>Rating:</strong> ${starStr} (${rating}/5)</p>
-            <p><strong>Name:</strong> ${name}</p>
-            ${business ? `<p><strong>Business:</strong> ${business}</p>` : ''}
-            ${email    ? `<p><strong>Email:</strong> ${email}</p>`       : ''}
-            ${service  ? `<p><strong>Service:</strong> ${service}</p>`   : ''}
-            <p><strong>Date:</strong> ${newReview.dateIST}</p>
-            <hr style="border:none;border-top:1px solid #dee2e6;margin:16px 0;">
-            <p><strong>Review:</strong></p>
-            <p style="background:white;padding:16px;border-radius:8px;border-left:4px solid #7c3aed;font-style:italic;">"${message}"</p>
-            <p style="font-size:.75rem;color:#6c757d;margin-top:16px;">
-              Total reviews: ${db.reviews.length}
-            </p>
-          </div>
-        </div>
-      `,
+        `,
+      }),
     });
-    console.log('📧 Email sent successfully!');
-    return res.status(200).json({ success: true, review: newReview });
+
+    if (response.ok) {
+      console.log('📧 Email sent successfully!');
+      return res.status(200).json({ success: true, review: newReview });
+    } else {
+      const err = await response.json();
+      console.error('❌ Resend error:', JSON.stringify(err));
+      return res.status(200).json({
+        success: true,
+        warning: 'Review saved but email failed.',
+        review: newReview
+      });
+    }
 
   } catch (emailErr) {
     console.error('❌ Email error:', emailErr.message);
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       warning: 'Review saved but email failed.',
-      review: newReview 
+      review: newReview
     });
   }
 });
@@ -117,5 +124,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('🚀 Server running on port ' + PORT);
-  console.log('📧 Brevo SMTP ready');
+  console.log('📧 Email via Resend API');
 });
