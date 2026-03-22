@@ -119,28 +119,3 @@ app.listen(PORT, () => {
   console.log('🚀 Server running on port ' + PORT);
   console.log('📧 Brevo SMTP ready');
 });
-```
-
-**6.** Scroll down → type in commit box:
-```
-Fix Brevo SMTP no secrets
-```
-**7.** Click **"Commit changes"** ✅
-
----
-
-## Also — Delete SMTP_HOST and SMTP_PORT from Railway Variables
-
-Go to Railway → **Variables** tab → find `SMTP_HOST` → click **⋮** → **Delete**
-
-Do same for `SMTP_PORT` → **Delete**
-
-These two are not needed anymore since we hardcoded `smtp-relay.brevo.com` directly in the code!
-
-Keep only:
-```
-✅ GMAIL_USER
-✅ GMAIL_PASS
-✅ PORT
-✅ SMTP_USER
-✅ SMTP_PASS
